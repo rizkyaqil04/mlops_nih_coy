@@ -1,0 +1,47 @@
+import os
+
+MODEL_PATH = "models/bertopic_model"
+
+# Function to compute embeddings
+def compute_embeddings(papers):
+    from sentence_transformers import SentenceTransformer
+    texts = [paper["title"] for paper in papers]
+    model = SentenceTransformer("all-MiniLM-L6-v2")  # You can change this model
+    embeddings = model.encode(texts)
+    return texts, embeddings
+
+# Function to train/load BERTopic
+def compute_topics_with_bertopic(papers, save_model=True):
+    
+    from bertopic import BERTopic
+
+    texts, embeddings = compute_embeddings(papers)
+
+    # Check if the model exists
+    if os.path.exists(MODEL_PATH):
+        print("Loading existing BERTopic model...")
+        topic_model = BERTopic.load(MODEL_PATH)
+        print("gud")
+    else:
+        print("Training new BERTopic model...")
+
+        # 🔹 Initialize a new BERTopic model with custom settings
+        topic_model = BERTopic(
+            calculate_probabilities=True,  # Enable probabilities for better topic interpretation
+            verbose=True  # Show progress output
+        )
+
+        # 🔹 Train the model
+        topic_model.fit(texts, embeddings)
+
+        # 🔹 Save the model after training
+        if save_model:
+            os.makedirs("models", exist_ok=True)  # Ensure directory exists
+            topic_model.save(MODEL_PATH)
+            print(f"Model saved at {MODEL_PATH}")
+
+    # Generate topics for the dataset
+    topics, _ = topic_model.transform(texts)
+
+    return topic_model, topics
+
